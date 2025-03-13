@@ -13,11 +13,14 @@ except Exception as e:
 # Load the dataset
 try:
     data = pd.read_csv('dummy_npi_data.csv')
-    # Rename columns to match the expected format
+
+    # Rename columns to match the expected format (if necessary)
+    # Ensure the column names match exactly what the model expects
     data.rename(columns={
-        "Usage Time (mins)": "Usage_Time",
-        "Count of Survey Attempts": "Survey_Attempts"
+        "Usage Time (mins)": "Usage Time (mins)",  # Keep original name
+        "Count of Survey Attempts": "Count of Survey Attempts"  # Keep original name
     }, inplace=True)
+
 except Exception as e:
     st.error(f"Error loading the dataset: {str(e)}")
     st.stop()
@@ -47,9 +50,19 @@ if input_time:
     # Add a new column for the input time
     data['Input_Time'] = time_in_minutes
 
+    # Prepare the feature set for prediction
+    # Ensure the feature names match exactly what the model expects
+    required_features = ['Login_Time_Minutes', 'Logout_Time_Minutes', 'Usage Time (mins)', 'Count of Survey Attempts']
+
+    # Check if all required features are present
+    if not all(feature in data.columns for feature in required_features):
+        st.error(f"Missing required features: {set(required_features) - set(data.columns)}")
+        st.stop()
+
     # Predict likelihood of attendance
     try:
-        predictions = model.predict(data[['Login_Time_Minutes', 'Logout_Time_Minutes', 'Usage_Time', 'Survey_Attempts', 'Input_Time']])
+        # Use only the required features for prediction
+        predictions = model.predict(data[required_features])
         data['Likely_to_Attend'] = predictions
     except Exception as e:
         st.error(f"Error during prediction: {str(e)}")
