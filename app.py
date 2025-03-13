@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import joblib
-from datetime import datetime
 
 # Load the trained ML model
 try:
@@ -14,24 +13,26 @@ except Exception as e:
 try:
     data = pd.read_csv('dummy_npi_data.csv')
 
-    # Rename columns to match the expected format (if necessary)
-    # Ensure the column names match exactly what the model expects
+    # Rename columns to match the expected format
     data.rename(columns={
         "Usage Time (mins)": "Usage Time (mins)",  # Keep original name
         "Count of Survey Attempts": "Count of Survey Attempts"  # Keep original name
     }, inplace=True)
 
+    # Convert Login Time and Logout Time to minutes since midnight
+    data['Login_Time_Minutes'] = pd.to_datetime(data['Login Time']).dt.hour * 60 + pd.to_datetime(data['Login Time']).dt.minute
+    data['Logout_Time_Minutes'] = pd.to_datetime(data['Logout Time']).dt.hour * 60 + pd.to_datetime(data['Logout Time']).dt.minute
+
 except Exception as e:
     st.error(f"Error loading the dataset: {str(e)}")
     st.stop()
 
-# Convert Login Time and Logout Time to minutes since midnight
-try:
-    data['Login_Time_Minutes'] = pd.to_datetime(data['Login Time']).dt.hour * 60 + pd.to_datetime(data['Login Time']).dt.minute
-    data['Logout_Time_Minutes'] = pd.to_datetime(data['Logout Time']).dt.hour * 60 + pd.to_datetime(data['Logout Time']).dt.minute
-except Exception as e:
-    st.error(f"Error converting time columns: {str(e)}")
-    st.stop()
+# Function to create dynamic features
+def create_time_features(df, input_time):
+    df['Active_Duration'] = df['Logout_Time_Minutes'] - df['Login_Time_Minutes']
+    df['Overlap_With_Input_Time'] = ((df['Login_Time_Minutes'] <= input_time) & (df['Logout_Time_Minutes'] >= input_time)).astype(int)
+    df['Time_Since_Last_Login'] = abs(df['Login_Time_Minutes'] - input_time)
+    return df
 
 # Streamlit App Title
 st.title("Doctor Survey Attendance Predictor")
@@ -47,12 +48,19 @@ if input_time:
         st.error(f"Invalid time format: {str(e)}")
         st.stop()
 
-    # Add a new column for the input time
-    data['Input_Time'] = time_in_minutes
+    # Recreate dynamic features for prediction
+    data = create_time_features(data, time_in_minutes)
 
     # Prepare the feature set for prediction
-    # Ensure the feature names match exactly what the model expects
-    required_features = ['Login_Time_Minutes', 'Logout_Time_Minutes', 'Usage Time (mins)', 'Count of Survey Attempts']
+    required_features = [
+        'Login_Time_Minutes',
+        'Logout_Time_Minutes',
+        'Usage Time (mins)',
+        'Count of Survey Attempts',
+        'Active_Duration',
+        'Overlap_With_Input_Time',
+        'Time_Since_Last_Login'
+    ]
 
     # Check if all required features are present
     if not all(feature in data.columns for feature in required_features):
@@ -61,7 +69,6 @@ if input_time:
 
     # Predict likelihood of attendance
     try:
-        # Use only the required features for prediction
         predictions = model.predict(data[required_features])
         data['Likely_to_Attend'] = predictions
     except Exception as e:
