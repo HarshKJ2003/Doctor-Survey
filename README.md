@@ -84,7 +84,7 @@ The app is deployed using **Streamlit** and is hosted on **Streamlit Community C
 | `requirements.txt`     | List of Python dependencies                      |
 | `survey_attendance_model.pkl` | Trained machine learning model            |
 | `dummy_npi_data.csv`   | Dataset used for training and prediction         |
-| `model.ipynb`            | The model maker                                |
+| `model.ipynb`            | The model code, which creates the pkl file     |
 
 ---
 
