@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib
+from datetime import datetime
 
 # Load the trained ML model
 try:
@@ -19,6 +20,14 @@ try:
     }, inplace=True)
 except Exception as e:
     st.error(f"Error loading the dataset: {str(e)}")
+    st.stop()
+
+# Convert Login Time and Logout Time to minutes since midnight
+try:
+    data['Login_Time_Minutes'] = pd.to_datetime(data['Login Time']).dt.hour * 60 + pd.to_datetime(data['Login Time']).dt.minute
+    data['Logout_Time_Minutes'] = pd.to_datetime(data['Logout Time']).dt.hour * 60 + pd.to_datetime(data['Logout Time']).dt.minute
+except Exception as e:
+    st.error(f"Error converting time columns: {str(e)}")
     st.stop()
 
 # Streamlit App Title
